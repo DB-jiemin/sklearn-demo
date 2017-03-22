@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 17-3-17 下午3:21
+# -*- coding: utf-8 -*- # @Time    : 17-3-17 下午3:21
 # @Author  : 张杰民
 # @Site    : 
-# @File    : test_one_hot.py
-# @Software: PyCharm
+# @File    : test_one_hot.py # @Software: PyCharm
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler #数据归一化
 from sklearn.linear_model import LogisticRegression #逻辑回归模型
+from sklearn import svm
 from sklearn.model_selection import cross_val_score #交叉验证
 from sklearn.model_selection import ShuffleSplit #数据集分裂
 from sklearn.model_selection import RandomizedSearchCV #grid search提升版本
@@ -16,7 +15,12 @@ from sklearn.model_selection import learning_curve #计算学习率,训练集合
 from sklearn.externals import joblib #模型持久化
 from sklearn.utils import shuffle #洗牌
 from sklearn.metrics import roc_auc_score #计算auc
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import tree
 import matplotlib.pyplot as plt #绘制图形
+
+import os
+import pydotplus
 
 dataMat = pd.read_csv('adult/adult.data') #使用pandas读取csv数据
 data_mat_test = pd.read_csv('adult/adult.test')
@@ -24,41 +28,59 @@ data_mat_test_label = data_mat_test.pop('classes')
 dataLabel = dataMat.pop('classes') #将类别列粗
 # 在这里添加 train dev test三个数据集合
 #下面两个列表是属性列:pop_con_cols表示属性是连续值,pop_cat_cols为离散值
-pop_con_cols = ['age','fnlwgt','marital-status','capital-gain','capital-loss']
-pop_cat_cols = ['workclass', 'education', 'occupation', 'e-serv', 'relationship', 'race', 'sex', 'native-country']
-dataCatCols = dataMat[pop_cat_cols]
+pop_con_cols = ['fnlwgt','marital-status','capital-gain','capital-loss','hours-per-week']
+pop_cat_cols = ['age','workclass', 'education', 'occupation', 'e-serv', 'relationship', 'race', 'sex', 'native-country']
+dataMat['age']= pd.cut(dataMat['age'],8,labels=['a','b','c','d','e','f','g','h'])
+#pop_con_cols = ['age','marital-status','capital-gain','hours-per-week']
 dataConCols = dataMat[pop_con_cols]
-ss = StandardScaler() #实例化
+dataCatCols = dataMat[pop_cat_cols]
+#dt = DecisionTreeClassifier().fit(dataConCols, dataLabel)
+#with open("adult.dot","w") as f:
+#    ff = tree.export_graphviz(dt, out_file=f)
+#os.unlink("adult.dot")
+#dot_data = tree.export_graphviz(dt, out_file=None)
+#graph = pydotplus.graph_from_dot_data(dot_data)
+#graph.write_pdf("adult.pdf")
+#dot_data = tree.export_graphviz(dt, out_file=None, feature_names=pop_con_cols,class_names=[">50K","<=50K"],filled=True,special_characters=True)
+#open("a.png","w").write(graph.create_png())
+ss = StandardScaler()
 ss.fit(dataConCols) #对连续值进行归一化
 aa = ss.fit_transform(dataConCols)
-dataCatCols.fillna("NA") #用na填充缺失值,原始数据的缺失值是?
+#dataCatCols.fillna(np.nan) #用na填充缺失值,原始数据的缺失值是?
 x_vec_cat = pd.get_dummies(dataCatCols) #将离散值进行哑变量表示
 X = np.concatenate((x_vec_cat, aa),axis=1) #合并两部分数据,刚才拆成了离散和连续的两部分处理
-
+data_mat_test['age'] = pd.cut(data_mat_test['age'], 8, labels=['a','b','c','d','e','f','g','h'])
 dataCatCols = data_mat_test[pop_cat_cols]
 dataConCols = data_mat_test[pop_con_cols]
 ss = StandardScaler() #实例化
 ss.fit(dataConCols) #对连续值进行归一化
 aa = ss.fit_transform(dataConCols)
-dataCatCols.fillna("NA") #用na填充缺失值,原始数据的缺失值是?
+#dataCatCols.fillna(pd.nan) #用na填充缺失值,原始数据的缺失值是?
 x_vec_cat = pd.get_dummies(dataCatCols) #将离散值进行哑变量表示
 X_test = np.concatenate((x_vec_cat, aa),axis=1) #合并两部分数据,刚才拆成了离散和连续的两部分处理
-
+#
 #X, test, dataLabel, y_test = train_test_split(X, dataLabel,test_size=0.3, random_state=1)
 Cs = np.array(range(1,100)) / 100.0 #logistic regression回归的超参数C
 test_scores = [] #交叉验证的测试分数
 cvs = cross_val_score
 cv = ShuffleSplit(n_splits=5, test_size=0.3, random_state=0) #创建交叉验证的数据集
 #循环每个C,测试哪个C最合适,每次运行可能会发现C值都不同,没有关系,因为每次的最佳评分都差不多,误差超不过0.0001
-for c in Cs:
-    clf = LogisticRegression(C=c,tol=1e-4,penalty='l2')
-    test_score = cvs(cv=cv,estimator=clf, X=X,y=dataLabel,scoring="roc_auc") #这里的roc_auc很重要,因为这里是二分类所以用的这个auc进行评判,如果是多分类还有别的评价指标,具体请看model_selection.metrics
-    test_scores.append(test_score)
-test_scores = np.array(test_scores) #将test_scores转换成np格式数据
-plt.plot(Cs,test_scores.sum(axis=1) / test_scores.shape[1]) #绘制交叉验证的曲线
-plt.show() #显示图形
+
+#for c in Cs:
+#    clf = LogisticRegression(C=c,tol=1e-4,penalty='l2')
+#    test_score = cvs(cv=cv,estimator=clf, X=X,y=dataLabel,scoring="accuracy") #这里的roc_auc很重要,因为这里是二分类所以用的这个auc进行评判,如果是多分类还有别的评价指标,具体请看model_selection.metrics
+#    test_scores.append(test_score)
+#test_scores = np.array(test_scores) #将test_scores转换成np格式数据
+#plt.plot(Cs,test_scores.sum(axis=1) / test_scores.shape[1]) #绘制交叉验证的曲线
+#plt.show() #显示图形
 #下面param_grid是为RandomizedGridCV准备的参数
-param_gird = {"C":Cs,"tol":np.logspace(-5,2,100),"penalty":["l2","l1"]}
+
+param_gird = {"C":Cs,"tol":np.logspace(-5,2,100),"penalty":["l2","l1"]} #LR参数
+clf = LogisticRegression()
+
+#param_gird = {"C":Cs, "kernel":['linear','rbf']} #SVM参数
+#clf = svm.SVC()
+
 #RandomizedSearchCV会组合里面所有的组合进行cv测试,最后给出最好的一组参数
 #estimator 表示拟合的算法,这里是lr
 #param_distributions 表示要搜索的超参数集合,这个是dict格式

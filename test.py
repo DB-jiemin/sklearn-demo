@@ -7,20 +7,19 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler #数据归一化
 from sklearn.linear_model import LogisticRegression #逻辑回归模型
-from sklearn import svm
-from sklearn.model_selection import cross_val_score #交叉验证
+
+# from sklearn.model_selection import cross_val_score #交叉验证
 from sklearn.model_selection import ShuffleSplit #数据集分裂
 from sklearn.model_selection import RandomizedSearchCV #grid search提升版本
 from sklearn.model_selection import learning_curve #计算学习率,训练集合与验证集合
 from sklearn.externals import joblib #模型持久化
 from sklearn.utils import shuffle #洗牌
 from sklearn.metrics import roc_auc_score #计算auc
-from sklearn.tree import DecisionTreeClassifier
-from sklearn import tree
+from xgboost.sklearn import XGBClassifier
 import matplotlib.pyplot as plt #绘制图形
 
-import os
-import pydotplus
+xgbc = XGBClassifier()
+xgb_param ={"max_depth" : [3, 4, 5]}
 
 dataMat = pd.read_csv('adult/adult.data') #使用pandas读取csv数据
 data_mat_test = pd.read_csv('adult/adult.test')
@@ -62,7 +61,7 @@ X_test = np.concatenate((x_vec_cat, aa),axis=1) #合并两部分数据,刚才拆
 #X, test, dataLabel, y_test = train_test_split(X, dataLabel,test_size=0.3, random_state=1)
 Cs = np.array(range(1,100)) / 100.0 #logistic regression回归的超参数C
 test_scores = [] #交叉验证的测试分数
-cvs = cross_val_score
+# cvs = cross_val_score
 cv = ShuffleSplit(n_splits=5, test_size=0.3, random_state=0) #创建交叉验证的数据集
 #循环每个C,测试哪个C最合适,每次运行可能会发现C值都不同,没有关系,因为每次的最佳评分都差不多,误差超不过0.0001
 
@@ -75,7 +74,7 @@ cv = ShuffleSplit(n_splits=5, test_size=0.3, random_state=0) #创建交叉验证
 #plt.show() #显示图形
 #下面param_grid是为RandomizedGridCV准备的参数
 
-param_gird = {"C":Cs,"tol":np.logspace(-5,2,100),"penalty":["l2","l1"]} #LR参数
+param_gird = {"C":Cs,"tol":np.logspace(-5,2,100),"penalty":["l1"]} #LR参数
 clf = LogisticRegression()
 
 #param_gird = {"C":Cs, "kernel":['linear','rbf']} #SVM参数
@@ -90,6 +89,24 @@ rgs = RandomizedSearchCV(estimator=clf,param_distributions=param_gird,cv=cv,scor
 rgs.fit(X,dataLabel) #开始寻找最佳参数
 #下面每次输出的可能都不一样,没事,看一下上面的cross_vali_score_curve.jpg就可以了
 #因为选取的参数在平行x轴的地方,所以选取哪里都可以
+print "=================the first grid search params======"
+print "=================算法的最佳参数===================="
+print rgs.best_estimator_
+print "=============在这个参数下的最好得分================"
+print rgs.best_score_
+print "=====================最佳超参数===================="
+print rgs.best_params_
+print "==================================================="
+
+C_space = np.arange(rgs.best_params_["C"] / 2.0, rgs.best_params_["C"] * 2.0, 0.0001)
+tol_space = np.arange(rgs.best_params_["tol"] / 2.0, rgs.best_params_["tol"] * 2.0, 0.0001)
+
+param_gird = {"C":C_space, "tol":tol_space, "penalty":["l1"]} #LR参数
+clf = LogisticRegression(C=rgs.best_params_["C"], penalty=rgs.best_params_["penalty"], tol=rgs.best_params_["tol"])
+rgs = RandomizedSearchCV(estimator=clf,param_distributions=param_gird,cv=cv,scoring="roc_auc")
+rgs.fit(X,dataLabel) #开始寻找最佳参数
+print
+print "=================the second grid search params======"
 print "=================算法的最佳参数===================="
 print rgs.best_estimator_
 print "=============在这个参数下的最好得分================"

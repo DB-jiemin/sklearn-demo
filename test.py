@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt #绘制图形
 xgbc = XGBClassifier(max_depth=3, learning_rate=0.1,n_estimators=100, objective="binary:logistic", gamma=0)
 xgb_param ={"max_depth" : [3, 4, 5], "learning_rate":np.logspace(-3,3,100) ,"n_estimators":range(20,101,10), "gamma":np.arange(0.01,1.0,0.01)}
 cv = ShuffleSplit(n_splits=10, test_size=0.2, train_size=0.8, random_state=5)
-rscv = RandomizedSearchCV(xgbc, xgb_param,10, "accuracy", cv=10)
+rscv = RandomizedSearchCV(xgbc, xgb_param,10, "roc_auc", cv=cv)
 
 dataMat = pd.read_csv('adult/adult.data') #使用pandas读取csv数据
 data_mat_test = pd.read_csv('adult/adult.test')
@@ -153,4 +153,8 @@ print rscv.best_score_
 print "=====================最佳超参数===================="
 print rscv.best_params_
 print "==================================================="
+y_score = rscv.best_estimator_.predict(X)
+y_score_test = rscv.best_estimator_.predict(X_test)
+print roc_auc_score(dataLabel, y_score)
+print roc_auc_score(data_mat_test_label, y_score_testLabel)
 

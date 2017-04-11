@@ -16,6 +16,8 @@ from sklearn.externals import joblib #模型持久化
 from sklearn.utils import shuffle #洗牌
 from sklearn.metrics import roc_auc_score #计算auc
 from xgboost.sklearn import XGBClassifier
+from xgboost.plotting import plot_tree
+
 import matplotlib.pyplot as plt #绘制图形
 
 xgbc = XGBClassifier(max_depth=3, learning_rate=0.1,n_estimators=100, objective="binary:logistic", gamma=0)
@@ -156,5 +158,6 @@ print "==================================================="
 y_score = rscv.best_estimator_.predict(X)
 y_score_test = rscv.best_estimator_.predict(X_test)
 print roc_auc_score(dataLabel, y_score)
-print roc_auc_score(data_mat_test_label, y_score_testLabel)
-
+print roc_auc_score(data_mat_test_label, y_score_test)
+plot_tree(rscv.best_estimator_)
+plt.show()
